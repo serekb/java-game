@@ -40,7 +40,10 @@ public class JavaFXApp extends Application implements ChangeListener<Gp_values>
   GraphicsContext gc = canvas.getGraphicsContext2D();
 
   Game_service g_s;
-    
+  Grid grid = new Grid(10,5);
+  Cursor cursor = new Cursor(grid);
+
+
   public static void main(String[] args) {
     launch(args);
 
@@ -53,60 +56,68 @@ public class JavaFXApp extends Application implements ChangeListener<Gp_values>
 
 
   Menu menu1 = new Menu("File");
-    
+   
   MenuItem menuItem1 = new MenuItem("Item 1");
 
   MenuItem menuItem2 = new MenuItem("Exit");
-  
+ 
   menuItem2.setOnAction(e -> {
                               System.out.println("Exit Selected");
-                              
+                             
                               exit_dialog();
 
                              });
-  
+ 
   menu1.getItems().add(menuItem1);
   menu1.getItems().add(menuItem2);
 
-	
+
   MenuBar menuBar = new MenuBar();
-  
+ 
   menuBar.getMenus().add(menu1);
-  					
+ 
   VBox vBox = new VBox(menuBar,canvas);
-						
+
   Scene scene = new Scene(vBox, 960, 600);
-							
+
   primaryStage.setScene(scene);
-  
+ 
   primaryStage.setOnCloseRequest(e -> {
                                        e.consume();
                                        exit_dialog();
                                       });
-                                      
+                                     
   g_s = new Game_service();
  
-  g_s.valueProperty().addListener(this::changed);     
-  
+  g_s.valueProperty().addListener(this::changed);    
+ 
   g_s.start();    
-  
+ 
   primaryStage.show();
-  
+ 
  }
  
   public void changed(ObservableValue<? extends Gp_values> observable,
                       Gp_values oldValue,
                       Gp_values newValue)
    {
-
-
   gc.clearRect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
-  gc.setStroke(Color.BLUE);
-  gc.setLineWidth(5);
-  gc.strokeLine(2*FRAME_WIDTH/3, FRAME_HEIGHT/4, 2*FRAME_WIDTH/3, FRAME_HEIGHT/2);
+  int height = 0;
+  for(int i = 0; i <grid.size;i++)
+    {
+    int width = 0;
+        for(int j = 0; j <grid.size;j++)
+        {
+         grid.tab[i][j].display(width,height,gc);
+         width += 30;
+
+        }
+    height += 30;
+    }
+
   if(newValue != null) System.out.println("changed method called, x = " + newValue + "y = " + newValue);
-    
-    
+   
+   
    }
  
  
@@ -114,7 +125,7 @@ public class JavaFXApp extends Application implements ChangeListener<Gp_values>
  public void item_1()
   {
    System.out.println("item 1");
-  } 
+  }
  
  public void exit_dialog()
   {
@@ -122,20 +133,20 @@ public class JavaFXApp extends Application implements ChangeListener<Gp_values>
    
 
    Alert alert = new Alert(AlertType.CONFIRMATION,
-                           "Do you really want to exit the program?.", 
- 			    ButtonType.YES, ButtonType.NO);
+                           "Do you really want to exit the program?.",
+     ButtonType.YES, ButtonType.NO);
 
    alert.setResizable(true);
-   alert.onShownProperty().addListener(e -> { 
-                                             Platform.runLater(() -> alert.setResizable(false)); 
+   alert.onShownProperty().addListener(e -> {
+                                             Platform.runLater(() -> alert.setResizable(false));
                                             });
 
   Optional<ButtonType> result = alert.showAndWait();
   if (result.get() == ButtonType.YES)
    {
     Platform.exit();
-   } 
-  else 
+   }
+  else
    {
    }
 
@@ -147,20 +158,23 @@ class Field
     boolean revealed;
     boolean has_bomb;
     boolean has_flag;
+    boolean selected;
     int x;
     int y;
 
 
     public Field(int x, int y){
-        this.revealed = 0;
-        this.has_bomb = 0;
+        this.revealed = false;
+        this.has_bomb = false;
+        this.has_flag = false;
+        this.selected = false;
         this.x = x;
         this.y = y;
     }
 
-    public reveal(){
+    public void reveal(){
     if(this.revealed || this.has_flag) return;
-        this.revealed = 1;
+        this.revealed = true;
         if(this.has_bomb){
             // wybucha
         }
@@ -170,18 +184,42 @@ class Field
         }
     }
 
-    public set_bomb(){
-        this.has_bomb = 1;
+    public void set_bomb(){
+        this.has_bomb = true;
     }
-    public set_flag()
+    public void set_flag()
     {
         if(this.revealed) return;
-        this.has_flag = 1;
+        this.has_flag = true;
     }
-    public unset_flag()
+    public void unset_flag()
     {
         if(this.revealed) return;
-        this.has_flag = 0;
+        this.has_flag = false;
+    }
+    public void display(int width,int height,GraphicsContext gc)
+    {
+
+        if(this.revealed && this.has_bomb)
+        {
+        System.out.println("1");
+        gc.setStroke(Color.RED);
+        }
+        else if(this.revealed)
+        {
+        gc.setStroke(Color.YELLOW);
+        }
+        else if(this.has_flag)
+        {
+            gc.setStroke(Color.GREEN);
+        }
+        else
+        {
+        gc.setStroke(Color.GREEN);
+        }
+        gc.setStroke(Color.GREEN);
+//         System.out.println(gc.getStroke());
+        gc.fillRoundRect(width, height, 30, 30, 0, 0);
     }
 
 }
@@ -193,30 +231,104 @@ class Grid
 
     public Grid(int size,int bomb_percentage){
         this.size = size;
-        int nBombs = round(size*size * bomb_percentage * 0.01);
+        this.tab = new Field[size][size];
+        for( int i =0; i < this.size; i++)
+        {
+            for(int j =0; j < this.size; j++)
+            {
+                this.tab[i][j] = new Field(i, j);
+            }
+        }
+        int nBombs = (int) Math.round(0.01*size*size * bomb_percentage);
         int i = 0;
         while(i < nBombs){
-            int x = rand??(1,size);
-            int y = rande??(1,size);
-            if( tab[x][y].has_bomb).....
+            int x  =(int) ((Math.random() * (size)));
+            int y = (int) ((Math.random() * (size)));
+            if( !tab[x][y].has_bomb){
+                tab[x][y].set_bomb();
+                i++;
+            }
         }
+    }
+}
+class Cursor
+{
+    Grid grid;
+    int x;
+    int y;
 
-
+    public Cursor(Grid grid)
+    {
+        this.x = 0;
+        this.y = 0;
+        this.grid = grid;
     }
 
+    public void move(String direction)
+    {
+        this.grid.tab[this.x][this.y].selected = false;
+        if(direction == "UP")
+        {
+            if(this.y > 0 )
+            {
+            this.y -= 1;
+            return;
+            }
+        }
 
+        if(direction == "DOWN")
+        {
+            if(this.y < this.grid.size - 1 )
+            {
+            this.y += 1;
+            return;
+            }
+        }
+        if(direction == "LEFT")
+        {
+            if(this.x > 0 )
+            {
+            this.x -= 1;
+            return;
+            }
+        }
 
+        if(direction == "RIGHT")
+        {
+            if(this.x < this.grid.size - 1 )
+            {
+            this.x += 1;
+            return;
+            }
+        }
+
+        this.grid.tab[this.x][this.y].selected = true;
+        return;
+    }
 
 }
 
-
 class G_task extends Task<Gp_values>
  {
+  final  int VENDOR_ID   = 0x0810;
+
+  int i, result;
+
+    Gp gamepad;
   Gp_values g_move;
 
   public G_task()
    {
-    this.g_move = new Gp_values();
+
+     gamepad = new Gp();
+     System.out.println(gamepad);
+
+     result = gamepad.gp_open(VENDOR_ID, 0x0001);
+
+     if(result == -1) System.out.println("gamepad not opened");
+
+
+
    }
 
   @Override
@@ -231,35 +343,12 @@ class G_task extends Task<Gp_values>
 
       updateValue(null);
       updateValue(g_move);
+      Gp_values curr_v;
 
 
-     final  int VENDOR_ID   = 0x0810;
-
-     int i, result;
-     Gp gamepad;
-     Gp_values curr_v;
-
-
-     gamepad = new Gp();
-     System.out.println(gamepad);
-
-     result = gamepad.gp_open(VENDOR_ID, 0x0001);
-
-     if(result == -1) System.out.println("gamepad not opened");
 
      for(;;)
       {
-/*
-      try { Thread.sleep(1000);  System.out.println("sleep method");    }
-      catch (InterruptedException ex)
-       {
-        System.out.println("catch method");
-        break;
-       }*/
-       // System.out.print("\033[H\033[2J");
-       // System.out.flush();
-
-//       System.out.println("======================");
 
        curr_v = gamepad.get_values();
 
@@ -372,7 +461,7 @@ class G_task extends Task<Gp_values>
             }
            break;
           }
-
+         g_move = curr_v;
          updateValue(null);
          updateValue(g_move);
 
@@ -414,5 +503,3 @@ class G_task extends Task<Gp_values>
     }
 
    }
-
-
